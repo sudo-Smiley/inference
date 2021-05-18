@@ -17,8 +17,13 @@ import threading
 import time
 from queue import Queue
 
+
+import cli_colors
+import remote_runner
+
 import mlperf_loadgen as lg
 import numpy as np
+
 
 import dataset
 import imagenet
@@ -288,6 +293,7 @@ class RunnerBase:
         # run the prediction
         processed_results = []
         try:
+            cli_colors.color_print(self.model.inputs[0], cli_colors.BLUE)
             results = self.model.predict({self.model.inputs[0]: qitem.img})
             processed_results = self.post_process(results, qitem.content_id, qitem.label, self.result_dict)
             if self.take_accuracy:
@@ -407,7 +413,8 @@ def add_results(final_results, name, result_dict, result_list, took, show_accura
 def main():
     global last_timeing
     args = get_args()
-
+    # cli_colors.color_print(args, cli_colors.YELLOW)
+    # args.backend = "null"
     log.info(args)
 
     # find backend
@@ -424,6 +431,7 @@ def main():
         count_override = True
 
     # dataset to use
+    cli_colors.color_print(args.dataset, cli_colors.BLUE)
     wanted_dataset, pre_proc, post_proc, kwargs = SUPPORTED_DATASETS[args.dataset]
     ds = wanted_dataset(data_path=args.dataset_path,
                         image_list=args.dataset_list,
@@ -433,10 +441,10 @@ def main():
                         use_cache=args.cache,
                         count=count, **kwargs)
     # load model to backend
-    model = backend.load(args.model, inputs=args.inputs, outputs=args.outputs)
+    # model = backend.load(args.model, inputs=args.inputs, outputs=args.outputs)
     final_results = {
-        "runtime": model.name(),
-        "version": model.version(),
+        "runtime": "onnx", # model.name(),
+        "version": "v1 remote", # model.version(),
         "time": int(time.time()),
         "cmdline": str(args),
     }
@@ -462,20 +470,20 @@ def main():
     count = ds.get_item_count()
 
     # warmup
-    ds.load_query_samples([0])
-    for _ in range(5):
-        img, _ = ds.get_samples([0])
-        _ = backend.predict({backend.inputs[0]: img})
-    ds.unload_query_samples(None)
+    # ds.load_query_samples([0])
+    # for _ in range(5):
+    #     img, _ = ds.get_samples([0])
+    #     _ = backend.predict({backend.inputs[0]: img})
+    # ds.unload_query_samples(None)
 
     scenario = SCENARIO_MAP[args.scenario]
     runner_map = {
-        lg.TestScenario.SingleStream: RunnerBase,
+        lg.TestScenario.SingleStream: remote_runner.RemoteRunnerBase, # RunnerBase,
         lg.TestScenario.MultiStream: QueueRunner,
         lg.TestScenario.Server: QueueRunner,
         lg.TestScenario.Offline: QueueRunner
     }
-    runner = runner_map[scenario](model, ds, args.threads, post_proc=post_proc, max_batchsize=args.max_batchsize)
+    runner = runner_map[scenario](None, ds, args.threads, post_proc=post_proc, max_batchsize=args.max_batchsize)
 
     def issue_queries(query_samples):
         runner.enqueue(query_samples)

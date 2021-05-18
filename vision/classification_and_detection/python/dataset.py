@@ -7,10 +7,11 @@ dataset related classes and methods
 import logging
 import sys
 import time
+from typing import Dict
 
 import cv2
 import numpy as np
-
+import cli_colors
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("dataset")
@@ -37,6 +38,21 @@ def usleep(sec):
 
 
 class Dataset():
+
+    class NoCacheDict(dict):
+        get_item = None
+        counter = 0
+        def __init__(self, get_item, *args, **kwargs):
+            super().__init__(args, *kwargs)
+            self.get_item = get_item
+
+        def __getitem__(self, k):
+            # cli_colors.color_print(f"Getting item {k}", cli_colors.GREEN)
+            # self.counter += 1
+            # cli_colors.color_print(self.counter, cli_colors.GREEN)
+
+            return self.get_item(k)[0]
+
     def __init__(self):
         self.arrival = None
         self.image_list = []
@@ -54,7 +70,7 @@ class Dataset():
         raise NotImplementedError("Dataset:get_list")
 
     def load_query_samples(self, sample_list):
-        self.image_list_inmemory = {}
+        self.image_list_inmemory = {} # self.NoCacheDict(self.get_item)
         for sample in sample_list:
             self.image_list_inmemory[sample], _ = self.get_item(sample)
         self.last_loaded = time.time()
