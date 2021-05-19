@@ -5,6 +5,11 @@ import mlperf_loadgen as lg
 import threading
 from queue import Queue
 
+import basic_pb2
+import basic_pb2_grpc
+import grpc
+
+
 import socket
 import cli_colors
 import pickle
@@ -28,6 +33,7 @@ class Item:
 
 
 class RemoteRunnerBase:
+
     def __init__(self, model, ds, threads, post_proc=None, max_batchsize=128):
         self.take_accuracy = False
         self.ds = ds
@@ -39,10 +45,11 @@ class RemoteRunnerBase:
         self.result_timing = []
         self.server = ("127.0.0.1", 8085)
         self.connect()
+    
 
     def connect(self):
-        self.sockfd = socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP)
-        self.sockfd.connect(self.server)
+        self.channel = grpc.insecure_channel('localhost:8086')
+        self.stub = basic_pb2_grpc.BasicServiceStub(self.channel)
 
     def request_model(self, model):
         pass
@@ -57,14 +64,10 @@ class RemoteRunnerBase:
         self.post_process.start()
 
     def predict_remote(self, qitem: Item):
-        payload = pickle.dumps(qitem.img, protocol=0)
-        size = len(payload)
-        size_bytes = size.to_bytes(4, 'big')
-        
-        self.sockfd.send(size_bytes + payload)
-        res_size = self.sockfd.recv(4, socket.MSG_WAITALL)
-        res = self.sockfd.recv(int.from_bytes(res_size, 'big'), socket.MSG_WAITALL)
-        return pickle.loads(res)
+        item_pickle = pickle.dumps(qitem.img)
+        request = basic_pb2.RequestItem(items=item_pickle)
+        response: basic_pb2.ItemResult = self.stub.InferenceItem(request)
+        return pickle.loads(response.results)
 
 
     def run_one_item(self, qitem):

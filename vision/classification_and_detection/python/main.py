@@ -19,7 +19,7 @@ from queue import Queue
 
 
 import cli_colors
-import remote_runner
+import remote_runner_rpc as remote_runner
 
 import mlperf_loadgen as lg
 import numpy as np

@@ -25,7 +25,11 @@ class ModelServer():
 
     def get_item(self):
         # cli_colors.color_print("get_item", cli_colors.YELLOW)
-        item_size = int.from_bytes(self.clifd.recv(4), "big")
+        item_size = self.clifd.recv(4)
+        if len(item_size) == 0:
+            cli_colors.color_print("LoadGen Disconnected", cli_colors.CYAN)
+            return False
+        item_size = int.from_bytes(item_size, "big")
         item = self.clifd.recv(item_size, socket.MSG_WAITALL)
         item: np.ndarray = pickle.loads(item)
         results = self.model.predict({self.model.inputs[0]: item})
@@ -33,6 +37,7 @@ class ModelServer():
         results = pickle.dumps(results, protocol=0)
         results_size = len(results).to_bytes(4, "big")
         self.clifd.send(results_size + results)
+        return True
 
 def get_backend(backend):
     if backend == "tensorflow":
@@ -58,18 +63,18 @@ def get_backend(backend):
     return backend
 
 
-def get_item():
-    pass
-
-
 def main():
+
 
     model_path = "/home/onaman/dev/inference/vision/classification_and_detection/mobilenet_v1_1.0_224.onnx"
     backend = get_backend("onnxruntime")
     model_server = ModelServer(
         backend, model_path, None, ['MobilenetV1/Predictions/Reshape_1:0'])
     while 1:
-        model_server.get_item()
+        if model_server.get_item() == False:
+            break
+
+
 
 
 
