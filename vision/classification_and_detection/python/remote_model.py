@@ -65,9 +65,7 @@ def get_backend(backend):
 
 
 def main():
-
-
-    model_path = os.environ["MODEL_DIR"]
+    model_path = os.path.join(os.environ["MODEL_DIR"], "mobilenet_v1_1.0_224.onnx")
     backend = get_backend("onnxruntime")
     model_server = ModelServer(
         backend, model_path, None, ['MobilenetV1/Predictions/Reshape_1:0'])

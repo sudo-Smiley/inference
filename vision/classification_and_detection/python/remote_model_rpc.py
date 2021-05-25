@@ -53,7 +53,7 @@ class BasicServiceServicer(basic_pb2_grpc.BasicServiceServicer):
 
 
 def serve():
-    model_path = os.environ["MODEL_DIR"]
+    model_path = os.path.join(os.environ["MODEL_DIR"], "mobilenet_v1_1.0_224.onnx")
     backend = get_backend("onnxruntime")
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     basic_pb2_grpc.add_BasicServiceServicer_to_server(
