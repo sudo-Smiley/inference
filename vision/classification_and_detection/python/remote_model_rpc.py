@@ -5,6 +5,7 @@ import basic_pb2_grpc
 import grpc
 import pickle
 import numpy as np
+import os
 
 import cli_colors
 
@@ -42,16 +43,17 @@ class BasicServiceServicer(basic_pb2_grpc.BasicServiceServicer):
         super().__init__()
 
     def InferenceItem(self, request: basic_pb2.RequestItem, context):
-        cli_colors.color_print("Inference Item", cli_colors.CYAN)
+        cli_colors.color_print("Inference Item", cli_colors.CYAN_SHADE2)
         items = pickle.loads(request.items)
         results = self.model.predict({self.model.inputs[0]: items})
         results = pickle.dumps(results, protocol=0)
         response: basic_pb2.ItemResult = basic_pb2.ItemResult(results=results)
+        cli_colors.color_print("Ended inferencing", cli_colors.CYAN_SHADE1)
         return response
 
 
 def serve():
-    model_path = "/home/onaman/dev/inference/vision/classification_and_detection/mobilenet_v1_1.0_224.onnx"
+    model_path = os.environ["MODEL_DIR"]
     backend = get_backend("onnxruntime")
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     basic_pb2_grpc.add_BasicServiceServicer_to_server(

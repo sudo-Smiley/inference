@@ -5,6 +5,7 @@ import pickle
 import socket
 import cli_colors
 import numpy as np
+import os
 
 class ModelServer():
 
@@ -66,7 +67,7 @@ def get_backend(backend):
 def main():
 
 
-    model_path = "/home/onaman/dev/inference/vision/classification_and_detection/mobilenet_v1_1.0_224.onnx"
+    model_path = os.environ["MODEL_DIR"]
     backend = get_backend("onnxruntime")
     model_server = ModelServer(
         backend, model_path, None, ['MobilenetV1/Predictions/Reshape_1:0'])
