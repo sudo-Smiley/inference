@@ -1,0 +1,12 @@
+syntax = "proto3";
+service BasicService {
+    rpc InferenceItem (RequestItem) returns (ItemResult);
+}
+
+message RequestItem {
+    bytes items = 1;
+}
+
+message ItemResult {
+    bytes results = 1;
+}
