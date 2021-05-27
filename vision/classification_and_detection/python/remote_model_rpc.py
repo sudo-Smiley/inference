@@ -7,7 +7,10 @@ import pickle
 import numpy as np
 import os
 
+import threading
+
 import cli_colors
+import time
 
 from concurrent import futures
 
@@ -35,20 +38,19 @@ def get_backend(backend):
     return backend
 
 
-
 class BasicServiceServicer(basic_pb2_grpc.BasicServiceServicer):
     model = None
     def __init__(self, backend, model_path, inputs, outputs) -> None:
         self.model = backend.load(model_path, inputs=inputs, outputs=outputs)
         super().__init__()
 
-    def InferenceItem(self, request: basic_pb2.RequestItem, context):
-        cli_colors.color_print("Inference Item", cli_colors.CYAN_SHADE2)
+    def InferenceItem(self, request: basic_pb2.RequestItem, context: grpc.ServicerContext):
         items = pickle.loads(request.items)
+        s = time.time()
         results = self.model.predict({self.model.inputs[0]: items})
-        results = pickle.dumps(results, protocol=0)
+        e = time.time()
+        results = pickle.dumps((results, e-s), protocol=0)
         response: basic_pb2.ItemResult = basic_pb2.ItemResult(results=results)
-        cli_colors.color_print("Ended inferencing", cli_colors.CYAN_SHADE1)
         return response
 
 

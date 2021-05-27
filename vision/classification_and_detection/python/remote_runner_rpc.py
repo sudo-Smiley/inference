@@ -4,13 +4,12 @@ import numpy as np
 import mlperf_loadgen as lg
 import threading
 from queue import Queue
-
+import math
 import basic_pb2
 import basic_pb2_grpc
 import grpc
 
 
-import socket
 import cli_colors
 import pickle
 
@@ -34,6 +33,11 @@ class Item:
 
 class RemoteRunnerBase:
 
+    time_taken = []
+    pickling = []
+    coms = []
+    batches = 0
+    samples = 0
     def __init__(self, model, ds, threads, post_proc=None, max_batchsize=128):
         self.take_accuracy = False
         self.ds = ds
@@ -63,10 +67,18 @@ class RemoteRunnerBase:
         self.post_process.start()
 
     def predict_remote(self, qitem: Item):
+        s = time.time()
         item_pickle = pickle.dumps(qitem.img)
+        p1 = time.time()
         request = basic_pb2.RequestItem(items=item_pickle)
         response: basic_pb2.ItemResult = self.stub.InferenceItem(request)
-        return pickle.loads(response.results)
+        p2 = time.time
+        result, time_taken = pickle.loads(response.results)
+        e = time.time()
+        self.time_taken.append(time_taken)
+        self.coms.append(p2 - p1 - time_taken)
+        self.pickling.append((p1 - s, e - p2))
+        return result
 
 
     def run_one_item(self, qitem):
@@ -99,6 +111,8 @@ class RemoteRunnerBase:
     def enqueue(self, query_samples):
         idx = [q.index for q in query_samples]
         query_id = [q.id for q in query_samples]
+        self.samples += len(query_samples)
+        self.batches += math.ceil(len(query_samples)/self.max_batchsize)
         if len(query_samples) < self.max_batchsize:
             data, label = self.ds.get_samples(idx)
             self.run_one_item(Item(query_id, idx, data, label))
@@ -109,6 +123,15 @@ class RemoteRunnerBase:
                 self.run_one_item(Item(query_id[i:i+bs], idx[i:i+bs], data, label))
 
     def finish(self):
+        cli_colors.color_print(f"Total: {(sum(self.time_taken))}, Avg: {(sum(self.time_taken)/len(self.time_taken)):5f}", cli_colors.RED)
+        cli_colors.color_print(f"{self.samples} Samples in {self.batches} Batches", cli_colors.GREEN)
+        import pandas as pd
+        p_df = pd.DataFrame(self.pickling, columns=["Pickle", "Unpickle"])
+        c_df = pd.DataFrame(self.coms)
+        t_df = pd.DataFrame(self.time_taken)
+        p_df.to_csv("pickling.csv")
+        c_df.to_csv("communication.csv")
+        t_df.to_csv("inference.csv")
         pass
 
 class RemoteQueueRunner(RemoteRunnerBase):
@@ -138,6 +161,8 @@ class RemoteQueueRunner(RemoteRunnerBase):
     def enqueue(self, query_samples):
         idx = [q.index for q in query_samples]
         query_id = [q.id for q in query_samples]
+        self.samples += len(query_samples)
+        self.batches += math.ceil(len(query_samples)/self.max_batchsize)
         if len(query_samples) < self.max_batchsize:
             data, label = self.ds.get_samples(idx)
             self.tasks.put(Item(query_id, idx, data, label))
@@ -154,3 +179,4 @@ class RemoteQueueRunner(RemoteRunnerBase):
             self.tasks.put(None)
         for worker in self.workers:
             worker.join()
+        super().finish()
