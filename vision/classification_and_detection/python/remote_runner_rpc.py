@@ -43,7 +43,6 @@ class RemoteRunnerBase:
         self.take_accuracy = False
         self.max_batchsize = max_batchsize
         self.result_timing = []
-        self.server = ("127.0.0.1", 8085)
         self.connect()
     
 
