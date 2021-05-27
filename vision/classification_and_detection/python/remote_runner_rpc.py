@@ -48,11 +48,7 @@ class RemoteRunnerBase:
 
     def connect(self):
         self.channel = grpc.insecure_channel('localhost:8086')
-        
-        self.stubs = []
-        for _ in range(4): # should be self.threads
-            self.stubs.append(basic_pb2_grpc.BasicServiceStub(self.channel))
-        # self.stub = basic_pb2_grpc.BasicServiceStub(self.channel)
+        self.stub = basic_pb2_grpc.BasicServiceStub(self.channel)
 
     def request_model(self, model):
         pass
@@ -66,20 +62,20 @@ class RemoteRunnerBase:
         self.take_accuracy = take_accuracy
         self.post_process.start()
 
-    def predict_remote(self, qitem: Item, stub):
+    def predict_remote(self, qitem: Item):
         item_pickle = pickle.dumps(qitem.img)
         request = basic_pb2.RequestItem(items=item_pickle)
-        response: basic_pb2.ItemResult = stub.InferenceItem(request)
+        response: basic_pb2.ItemResult = self.stub.InferenceItem(request)
         return pickle.loads(response.results)
 
 
-    def run_one_item(self, qitem, stub):
+    def run_one_item(self, qitem):
         # run the prediction
         processed_results = []
         try:
             # results = self.model.predict({self.model.inputs[0]: qitem.img})
             cli_colors.color_print("Calling Predict", cli_colors.BLUE_SHADE1)
-            results = self.predict_remote(qitem, stub)
+            results = self.predict_remote(qitem)
             cli_colors.color_print("Predict Returned", cli_colors.RED_SHADE1)
             processed_results = self.post_process(results, qitem.content_id, qitem.label, self.result_dict)
             if self.take_accuracy:
@@ -110,7 +106,7 @@ class RemoteRunnerBase:
             bs = self.max_batchsize
             for i in range(0, len(idx), bs):
                 data, label = self.ds.get_samples(idx[i:i+bs])
-                self.run_one_item(Item(query_id[i:i+bs], idx[i:i+bs], data, label), self.stubs[0])
+                self.run_one_item(Item(query_id[i:i+bs], idx[i:i+bs], data, label))
 
     def finish(self):
         pass
@@ -123,12 +119,12 @@ class RemoteQueueRunner(RemoteRunnerBase):
         self.result_dict = {}
 
         for _ in range(self.threads):
-            worker = threading.Thread(target=self.handle_tasks, args=(self.tasks, self.stubs[_%4]))
+            worker = threading.Thread(target=self.handle_tasks, args=(self.tasks,))
             worker.daemon = True
             self.workers.append(worker)
             worker.start()
 
-    def handle_tasks(self, tasks_queue, stub):
+    def handle_tasks(self, tasks_queue):
         """Worker thread."""
         while True:
             qitem = tasks_queue.get()
@@ -136,7 +132,7 @@ class RemoteQueueRunner(RemoteRunnerBase):
                 # None in the queue indicates the parent want us to exit
                 tasks_queue.task_done()
                 break
-            self.run_one_item(qitem, stub)
+            self.run_one_item(qitem)
             tasks_queue.task_done()
 
     def enqueue(self, query_samples):
