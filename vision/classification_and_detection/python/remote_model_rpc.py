@@ -7,8 +7,6 @@ import pickle
 import numpy as np
 import os
 
-import threading
-
 import cli_colors
 import time
 
@@ -55,11 +53,11 @@ class BasicServiceServicer(basic_pb2_grpc.BasicServiceServicer):
 
 
 def serve():
-    model_path = os.path.join(os.environ["MODEL_DIR"], "mobilenet_v1_1.0_224.onnx")
+    model_path = os.path.join(os.environ["MODEL_DIR"], "ssd_mobilenet_v1_coco_2018_01_28.onnx")
     backend = get_backend("onnxruntime")
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     basic_pb2_grpc.add_BasicServiceServicer_to_server(
-        BasicServiceServicer(backend, model_path, None, ['MobilenetV1/Predictions/Reshape_1:0']), server)
+        BasicServiceServicer(backend, model_path, None, ['num_detections:0','detection_boxes:0','detection_scores:0','detection_classes:0']), server)
     server.add_insecure_port('[::]:8086')
     server.start()
     server.wait_for_termination()
