@@ -7,6 +7,8 @@ import pickle
 import numpy as np
 import os
 
+import argparse
+
 import cli_colors
 import time
 
@@ -38,8 +40,8 @@ def get_backend(backend):
 
 class BasicServiceServicer(basic_pb2_grpc.BasicServiceServicer):
     model = None
-    def __init__(self, backend, model_path, inputs, outputs) -> None:
-        self.model = backend.load(model_path, inputs=inputs, outputs=outputs)
+    def __init__(self, backend, model_path, inputs, outputs, threads=0) -> None:
+        self.model = backend.load(model_path, inputs=inputs, outputs=outputs, threads=threads)
         super().__init__()
 
     def InferenceItem(self, request: basic_pb2.RequestItem, context: grpc.ServicerContext):
@@ -51,16 +53,24 @@ class BasicServiceServicer(basic_pb2_grpc.BasicServiceServicer):
         response: basic_pb2.ItemResult = basic_pb2.ItemResult(results=results)
         return response
 
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model-threads", type=int, default=0,
+                        help="the number of threads the model should run for inferencing a single query")
+    args = parser.parse_args()
+    return args
 
 def serve():
+    args = get_args()
     model_path = os.path.join(os.environ["MODEL_DIR"], "ssd_mobilenet_v1_coco_2018_01_28.onnx")
     backend = get_backend("onnxruntime")
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     basic_pb2_grpc.add_BasicServiceServicer_to_server(
-        BasicServiceServicer(backend, model_path, None, ['num_detections:0','detection_boxes:0','detection_scores:0','detection_classes:0']), server)
+        BasicServiceServicer(backend, model_path, None, ['num_detections:0','detection_boxes:0','detection_scores:0','detection_classes:0'], threads=args.model_threads), server)
     server.add_insecure_port('[::]:8086')
     server.start()
     server.wait_for_termination()
+
 
 
 if __name__ == '__main__':
