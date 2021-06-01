@@ -8,6 +8,7 @@ import onnxruntime as rt
 
 import backend
 
+import cli_colors
 
 class BackendOnnxruntime(backend.Backend):
     def __init__(self):
@@ -24,12 +25,16 @@ class BackendOnnxruntime(backend.Backend):
         """image_format. For onnx it is always NCHW."""
         return "NCHW"
 
-    def load(self, model_path, inputs=None, outputs=None):
+    def load(self, model_path, inputs=None, outputs=None, threads=0):
         """Load model and find input/outputs from the model file."""
         opt = rt.SessionOptions()
         # enable level 3 optimizations
         # FIXME: enable below once onnxruntime 0.5 is released
         # opt.set_graph_optimization_level(3)
+        # opt.inter_op_num_threads = 1
+        opt.log_severity_level = 3
+        opt.intra_op_num_threads = threads
+        cli_colors.color_print(f"onnxruntime using {opt.intra_op_num_threads} threads", cli_colors.RED)
         self.sess = rt.InferenceSession(model_path, opt)
         # get input and output names
         if not inputs:
@@ -41,7 +46,7 @@ class BackendOnnxruntime(backend.Backend):
         else:
             self.outputs = outputs
         return self
-
+        
     def predict(self, feed):
         """Run the prediction."""
         return self.sess.run(self.outputs, feed)
