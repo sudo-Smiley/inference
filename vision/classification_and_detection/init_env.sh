@@ -1,2 +1,2 @@
-export DATA_DIR=`pwd`/fake_imagenet
+export DATA_DIR=`pwd`/coco_300
 export MODEL_DIR=`pwd`
