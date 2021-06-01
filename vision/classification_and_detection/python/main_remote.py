@@ -19,7 +19,6 @@ from queue import Queue
 
 
 import cli_colors
-from runner import RunnerBase,QueueRunner
 
 import mlperf_loadgen as lg
 import numpy as np
@@ -29,7 +28,7 @@ import dataset
 import imagenet
 import coco
 
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("main")
 
 NANO_SEC = 1e9
@@ -211,7 +210,11 @@ def get_args():
     parser.add_argument("--count", type=int, help="dataset items to use")
     parser.add_argument("--max-latency", type=float, help="mlperf max latency in pct tile")
     parser.add_argument("--samples-per-query", type=int, help="mlperf multi-stream sample per query")
-    parser.add_argument("--model-threads", type=int, default=0, help="the number of threads the model should run for inferencing a single query")
+
+    parser.add_argument("--address", type=str, default="localhost:8086", help="the address of the remote model. used with --remote")
+
+    parser.add_argument("--tcp", action="store_true", help="use plain TCP communication instead of gRPC")
+
     args = parser.parse_args()
 
     # don't use defaults in argparser. Instead we default to a dict, override that with a profile
@@ -232,6 +235,8 @@ def get_args():
 
     if args.scenario not in SCENARIO_MAP:
         parser.error("valid scanarios:" + str(list(SCENARIO_MAP.keys())))
+
+
     return args
 
 
@@ -258,7 +263,13 @@ def get_backend(backend):
         raise ValueError("unknown backend: " + backend)
     return backend
 
-
+def get_runners(is_tcp):
+    if is_tcp:
+        from runner import TCPRemoteRunnerBase, TCPRemoteQueueRunner
+        return TCPRemoteRunnerBase, TCPRemoteQueueRunner
+    else:
+        from runner import RemoteRunnerBase, RemoteQueueRunner
+        return RemoteRunnerBase, RemoteQueueRunner
 
 
 def add_results(final_results, name, result_dict, result_list, took, show_accuracy=False):
@@ -301,7 +312,7 @@ def main():
     args = get_args()
     # cli_colors.color_print(args, cli_colors.YELLOW)
     # args.backend = "null"
-    # log.info(args)
+    #log.info(args)
 
     # find backend
     backend = get_backend(args.backend)
@@ -327,10 +338,10 @@ def main():
                         use_cache=args.cache,
                         count=count, **kwargs)
     # load model to backend
-    model = backend.load(args.model, inputs=args.inputs, outputs=args.outputs, threads=args.model_threads)
+    # model = backend.load(args.model, inputs=args.inputs, outputs=args.outputs)
     final_results = {
-        "runtime": model.name(),
-        "version": model.version(),
+        "runtime": "onnx", # model.name(),
+        "version": "v1 remote", # model.version(),
         "time": int(time.time()),
         "cmdline": str(args),
     }
@@ -363,13 +374,14 @@ def main():
     # ds.unload_query_samples(None)
 
     scenario = SCENARIO_MAP[args.scenario]
+    RunnerBase, QueueRunner = get_runners(args.tcp)
     runner_map = {
         lg.TestScenario.SingleStream:  RunnerBase,
         lg.TestScenario.MultiStream: QueueRunner,
         lg.TestScenario.Server: QueueRunner,
         lg.TestScenario.Offline: QueueRunner
     }
-    runner = runner_map[scenario](model, ds, args.threads, post_proc=post_proc, max_batchsize=args.max_batchsize)
+    runner = runner_map[scenario](ds, args.threads, post_proc=post_proc, max_batchsize=args.max_batchsize, SUT_address=args.address)
 
     def issue_queries(query_samples):
         runner.enqueue(query_samples)
@@ -418,6 +430,7 @@ def main():
     if args.max_latency:
         settings.server_target_latency_ns = int(args.max_latency * NANO_SEC)
         settings.multi_stream_target_latency_ns = int(args.max_latency * NANO_SEC)
+    cli_colors.color_print(settings.multi_stream_target_latency_ns/NANO_SEC, cli_colors.YELLOW)
 
     sut = lg.ConstructSUT(issue_queries, flush_queries, process_latencies)
     qsl = lg.ConstructQSL(count, min(count, 500), ds.load_query_samples, ds.unload_query_samples)
