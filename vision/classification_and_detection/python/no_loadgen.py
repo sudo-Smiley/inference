@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import threading
 import dataset
 import argparse
 import coco
@@ -8,6 +9,8 @@ import os
 import argparse
 import time
 import cli_colors
+import multiprocessing as mp
+from queue import Queue
 
 SUPPORTED_DATASETS = {
     "imagenet":
@@ -210,6 +213,8 @@ def get_args():
                         help="mlperf multi-stream sample per query")
     parser.add_argument("--model-threads", type=int, default=0,
                         help="the number of threads the model should run for inferencing a single query")
+    parser.add_argument("--clients", type=int, default=1,
+                        help="the number of clients/processes")
     args = parser.parse_args()
 
     # don't use defaults in argparser. Instead we default to a dict, override that with a profile
@@ -256,10 +261,33 @@ def main():
     query_size = args.samples_per_query
     cli_colors.color_print(f"Total Samples: {count}, Query Size: {query_size}", cli_colors.YELLOW_SHADE2)
     
+    def handle_tasks(tasks_queue):
+        """Worker thread."""
+        while True:
+            qitem = tasks_queue.get()
+            if qitem is None:
+                # None in the queue indicates the parent want us to exit
+                tasks_queue.task_done()
+                break
+            model.predict(qitem)
+            tasks_queue.task_done()
+
     ds.load_query_samples(list(range(count)))
+    queries = Queue()
     for i in range(0, count, query_size):
         img, _ = ds.get_samples(list(range(i, i+query_size)))
-        _ = backend.predict({backend.inputs[0]: img})
+        queries.put({backend.inputs[0]: img})
+    workers = []
+    
+    for i in range(args.clients):
+        worker = threading.Thread(target=handle_tasks, args=(queries,))
+        worker.daemon = True
+        workers.append(worker)
+        queries.put(None)
+        worker.start()
+    for w in workers:
+        w.join()
+    print(queries.qsize())
     ds.unload_query_samples(None)
     
 if __name__ == "__main__":
