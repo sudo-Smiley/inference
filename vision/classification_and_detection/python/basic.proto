@@ -1,6 +1,7 @@
 syntax = "proto3";
 service BasicService {
     rpc InferenceItem (RequestItem) returns (ItemResult);
+    rpc ChangeThreads (ThreadRequest) returns (ThreadReply);
 }
 
 message RequestItem {
@@ -9,4 +10,12 @@ message RequestItem {
 
 message ItemResult {
     bytes results = 1;
+}
+
+message ThreadRequest {
+    int32 threads = 1;
+}
+
+message ThreadReply {
+    bool ok = 1;
 }

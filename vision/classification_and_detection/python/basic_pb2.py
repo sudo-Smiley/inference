@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0b\x62\x61sic.proto\"\x1c\n\x0bRequestItem\x12\r\n\x05items\x18\x01 \x01(\x0c\"\x1d\n\nItemResult\x12\x0f\n\x07results\x18\x01 \x01(\x0c\x32:\n\x0c\x42\x61sicService\x12*\n\rInferenceItem\x12\x0c.RequestItem\x1a\x0b.ItemResultb\x06proto3'
+  serialized_pb=b'\n\x0b\x62\x61sic.proto\"\x1c\n\x0bRequestItem\x12\r\n\x05items\x18\x01 \x01(\x0c\"\x1d\n\nItemResult\x12\x0f\n\x07results\x18\x01 \x01(\x0c\" \n\rThreadRequest\x12\x0f\n\x07threads\x18\x01 \x01(\x05\"\x19\n\x0bThreadReply\x12\n\n\x02ok\x18\x01 \x01(\x08\x32i\n\x0c\x42\x61sicService\x12*\n\rInferenceItem\x12\x0c.RequestItem\x1a\x0b.ItemResult\x12-\n\rChangeThreads\x12\x0e.ThreadRequest\x1a\x0c.ThreadReplyb\x06proto3'
 )
 
 
@@ -88,8 +88,74 @@ _ITEMRESULT = _descriptor.Descriptor(
   serialized_end=74,
 )
 
+
+_THREADREQUEST = _descriptor.Descriptor(
+  name='ThreadRequest',
+  full_name='ThreadRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='threads', full_name='ThreadRequest.threads', index=0,
+      number=1, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=76,
+  serialized_end=108,
+)
+
+
+_THREADREPLY = _descriptor.Descriptor(
+  name='ThreadReply',
+  full_name='ThreadReply',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='ok', full_name='ThreadReply.ok', index=0,
+      number=1, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=110,
+  serialized_end=135,
+)
+
 DESCRIPTOR.message_types_by_name['RequestItem'] = _REQUESTITEM
 DESCRIPTOR.message_types_by_name['ItemResult'] = _ITEMRESULT
+DESCRIPTOR.message_types_by_name['ThreadRequest'] = _THREADREQUEST
+DESCRIPTOR.message_types_by_name['ThreadReply'] = _THREADREPLY
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 RequestItem = _reflection.GeneratedProtocolMessageType('RequestItem', (_message.Message,), {
@@ -106,6 +172,20 @@ ItemResult = _reflection.GeneratedProtocolMessageType('ItemResult', (_message.Me
   })
 _sym_db.RegisterMessage(ItemResult)
 
+ThreadRequest = _reflection.GeneratedProtocolMessageType('ThreadRequest', (_message.Message,), {
+  'DESCRIPTOR' : _THREADREQUEST,
+  '__module__' : 'basic_pb2'
+  # @@protoc_insertion_point(class_scope:ThreadRequest)
+  })
+_sym_db.RegisterMessage(ThreadRequest)
+
+ThreadReply = _reflection.GeneratedProtocolMessageType('ThreadReply', (_message.Message,), {
+  'DESCRIPTOR' : _THREADREPLY,
+  '__module__' : 'basic_pb2'
+  # @@protoc_insertion_point(class_scope:ThreadReply)
+  })
+_sym_db.RegisterMessage(ThreadReply)
+
 
 
 _BASICSERVICE = _descriptor.ServiceDescriptor(
@@ -115,8 +195,8 @@ _BASICSERVICE = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=76,
-  serialized_end=134,
+  serialized_start=137,
+  serialized_end=242,
   methods=[
   _descriptor.MethodDescriptor(
     name='InferenceItem',
@@ -125,6 +205,16 @@ _BASICSERVICE = _descriptor.ServiceDescriptor(
     containing_service=None,
     input_type=_REQUESTITEM,
     output_type=_ITEMRESULT,
+    serialized_options=None,
+    create_key=_descriptor._internal_create_key,
+  ),
+  _descriptor.MethodDescriptor(
+    name='ChangeThreads',
+    full_name='BasicService.ChangeThreads',
+    index=1,
+    containing_service=None,
+    input_type=_THREADREQUEST,
+    output_type=_THREADREPLY,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,
   ),

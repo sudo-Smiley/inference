@@ -19,12 +19,23 @@ class BasicServiceStub(object):
                 request_serializer=basic__pb2.RequestItem.SerializeToString,
                 response_deserializer=basic__pb2.ItemResult.FromString,
                 )
+        self.ChangeThreads = channel.unary_unary(
+                '/BasicService/ChangeThreads',
+                request_serializer=basic__pb2.ThreadRequest.SerializeToString,
+                response_deserializer=basic__pb2.ThreadReply.FromString,
+                )
 
 
 class BasicServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def InferenceItem(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ChangeThreads(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -37,6 +48,11 @@ def add_BasicServiceServicer_to_server(servicer, server):
                     servicer.InferenceItem,
                     request_deserializer=basic__pb2.RequestItem.FromString,
                     response_serializer=basic__pb2.ItemResult.SerializeToString,
+            ),
+            'ChangeThreads': grpc.unary_unary_rpc_method_handler(
+                    servicer.ChangeThreads,
+                    request_deserializer=basic__pb2.ThreadRequest.FromString,
+                    response_serializer=basic__pb2.ThreadReply.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -62,5 +78,22 @@ class BasicService(object):
         return grpc.experimental.unary_unary(request, target, '/BasicService/InferenceItem',
             basic__pb2.RequestItem.SerializeToString,
             basic__pb2.ItemResult.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ChangeThreads(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/BasicService/ChangeThreads',
+            basic__pb2.ThreadRequest.SerializeToString,
+            basic__pb2.ThreadReply.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
