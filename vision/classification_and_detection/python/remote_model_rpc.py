@@ -42,6 +42,11 @@ class BasicServiceServicer(basic_pb2_grpc.BasicServiceServicer):
     model = None
     def __init__(self, backend, model_path, inputs, outputs, threads=0) -> None:
         self.model = backend.load(model_path, inputs=inputs, outputs=outputs, threads=threads)
+        self.model_path = model_path
+        self.backend = backend
+        self.outputs = outputs
+        self.inputs = inputs
+        self.threads = threads
         super().__init__()
 
     def InferenceItem(self, request: basic_pb2.RequestItem, context: grpc.ServicerContext):
@@ -52,6 +57,18 @@ class BasicServiceServicer(basic_pb2_grpc.BasicServiceServicer):
         results = pickle.dumps((results, e-s), protocol=0)
         response: basic_pb2.ItemResult = basic_pb2.ItemResult(results=results)
         return response
+    
+    def ChangeThreads(self, request, context):
+        n = request.threads
+        if n == self.threads:
+            cli_colors.color_print("Request to change threads ignored", cli_colors.YELLOW)
+            return basic_pb2.ThreadReply(ok=True)
+        self.model = self.backend.load(self.model_path, self.inputs, self.outputs, n)
+        
+        self.threads = n
+        return basic_pb2.ThreadReply(ok=True)
+
+
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -67,7 +84,7 @@ def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     basic_pb2_grpc.add_BasicServiceServicer_to_server(
         BasicServiceServicer(backend, model_path, None, ['num_detections:0','detection_boxes:0','detection_scores:0','detection_classes:0'], threads=args.model_threads), server)
-    server.add_insecure_port('[::]:8086')
+    server.add_insecure_port('localhost:8086')
     server.start()
     server.wait_for_termination()
 
