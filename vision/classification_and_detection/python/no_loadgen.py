@@ -10,6 +10,7 @@ import argparse
 import time
 import cli_colors
 import multiprocessing as mp
+import pandas as pd
 from queue import Queue
 
 SUPPORTED_DATASETS = {
@@ -261,6 +262,7 @@ def main():
     query_size = args.samples_per_query
     cli_colors.color_print(f"Total Samples: {count}, Query Size: {query_size}", cli_colors.YELLOW_SHADE2)
     
+    inference_time = []
     def handle_tasks(tasks_queue):
         """Worker thread."""
         while True:
@@ -269,7 +271,10 @@ def main():
                 # None in the queue indicates the parent want us to exit
                 tasks_queue.task_done()
                 break
+            s = time.time()
             model.predict(qitem)
+            e = time.time()
+            inference_time.append((e-s))
             tasks_queue.task_done()
 
     ds.load_query_samples(list(range(count)))
@@ -289,6 +294,8 @@ def main():
         w.join()
     print(queries.qsize())
     ds.unload_query_samples(None)
-    
+    df = pd.DataFrame(inference_time)
+
+
 if __name__ == "__main__":
     main()
