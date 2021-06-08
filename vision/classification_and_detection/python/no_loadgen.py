@@ -295,6 +295,7 @@ def main():
     print(queries.qsize())
     ds.unload_query_samples(None)
     df = pd.DataFrame(inference_time)
+    df.to_csv("inference_times.csv")
 
 
 if __name__ == "__main__":
